@@ -80,7 +80,7 @@ class BugPlanner:
 
         visited_x, visited_y = [], []
         while True:
-            # achive the goal position
+            # achieve the goal position
             if self.r_x[-1] == self.goal_x and self.r_y[-1] == self.goal_y:
                 break
 
@@ -90,7 +90,7 @@ class BugPlanner:
 
             # move in the latent space close to the obstacle
             if mov_dir == 'obs':
-                cand_x, cand_y, = self.mov_to_next_obs(visited_x, visited_y)
+                cand_x, cand_y, _ = self.mov_to_next_obs(visited_x, visited_y)
             
             if mov_dir == 'normal':
                 found_boundary = False
@@ -147,7 +147,7 @@ class BugPlanner:
 
         visited_x, visited_y = [], []
         while True:
-            # achive the goal position
+            # achieve the goal position
             if self.r_x[-1] == self.goal_x and self.r_y[-1] == self.goal_y:
                 break
 
@@ -180,6 +180,30 @@ class BugPlanner:
                 if not found_boundary:
                     self.r_x.append(cand_x)
                     self.r_y.append(cand_y)
+            elif mov_dir == 'obs':
+                # distance between the target and actual position
+                d = np. Linalg. norm(np. array( [cand_x, cand_y] - np.array( [self.goal_x, self.goal_y])))
+                if d < dist and not second_round:
+                    # find the lowest distance and save the position in exit_x, exit_y
+                    exit_x, exit_y = cand_x, cand_y
+                    dist = d
+                    
+                if back_to_start and not second_round:    
+                    # reach again first position infront of the obstacle
+                    second_round = True
+                    # delete all the previous visited positions from the actual path
+                    # during the obs move the visited position = actual path (r_x r_y)
+                    del self.r_x[-len(visited_x): ]
+                    del self.r_y[-len(visited_y):]
+                    visited_x [:], visited_y[: ] = [], []
+                # save the position in the actual path and visited positions
+                self.r_x.append(cand_x), self.r_y.append(cand_y)
+                visited_x.append(cand_x), visited_y.append(cand_y)
+                # then to reach again first position
+                # move in obs mode until reach the position with lowest distance to the target position
+                # when the robot reaches exit x exit v. the rohot can continue a normal movement mode
+                if cand_x == exit_x and cand_y == exit_y and second_round:
+                    mov_dir = 'normal'
 
     def bug2(self):
         """
@@ -189,6 +213,33 @@ class BugPlanner:
         goal (this may or may not be true because the algorithm doesn't explore the entire boundary around the obstacle).
         So, you depart from this point and continue towards the goal in a greedy manner
         """
+        mov_dir = 'normal'
+        cand_x, cand_y = -np.inf, -np.inf
+
+        straight_x, straight_y = [self.r_x[-1]], [self.r_y[-1]]
+        hit_x, hit_y = [], []
+
+        while True:
+            # the straight path reaches the goal
+            if straight_x[-1] == self.goal_x and straight_y[-1] == self.goal_y:
+                break
+            # move to the target
+            c_x = straight_x[-1] + np.sign(self.goal_x- straight_x[-1])
+            c_y = straight_y[-1] + np.sign(self.goal_y - straight_y[-1])
+
+            for x_ob, y_ob in zip(self.out_x, self.out_y):
+                if c_x == x_ob and c_y == y_ob:
+                    # collide with latent space, save the position in hit_x, hit_y
+                    hit_x.append(c_x), hit_y.append(c_y)
+                    break
+            straight_x.append(c_x), straight_y.append(c_y)
+            # current position is a latent space
+            for x_ob, y_ob in zip(self.out_x, self.out_y):
+                if self.r_x[-1] == x_ob and self.r_y[-1] == y_ob:
+                    mov_dir = 'obs'
+                    break
+
+            visited_x, visited_y = [], []
         
 def main():
 
